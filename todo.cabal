@@ -1,0 +1,87 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.39.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           todo
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/chriswmann/todo#readme>
+homepage:       https://github.com/chriswmann/todo#readme
+bug-reports:    https://github.com/chriswmann/todo/issues
+author:         Christopher Mann
+maintainer:     8133496+chriswmann@users.noreply.github.com
+copyright:      Christopher Mann
+license:        BSD-3-Clause
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/chriswmann/todo
+
+library
+  exposed-modules:
+      Domain
+  other-modules:
+      Paths_todo
+  autogen-modules:
+      Paths_todo
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , containers
+    , text
+    , time
+    , uuid
+  default-language: Haskell2010
+
+executable todo-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_todo
+  autogen-modules:
+      Paths_todo
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , containers
+    , text
+    , time
+    , todo
+    , uuid
+  default-language: Haskell2010
+
+test-suite todo-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      DomainSpec
+      Paths_todo
+  autogen-modules:
+      Paths_todo
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-tool-depends:
+      hspec-discover:hspec-discover
+  build-depends:
+      QuickCheck
+    , aeson
+    , base >=4.7 && <5
+    , containers
+    , hspec
+    , text
+    , time
+    , todo
+    , uuid
+  default-language: Haskell2010
