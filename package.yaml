@@ -63,6 +63,7 @@ tests:
     dependencies:
       - todo
       - hspec
+      - quickcheck-instances
       - QuickCheck
     build-tools:
       - hspec-discover
