@@ -18,9 +18,8 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
 import Data.UUID (UUID)
-import qualified Data.UUID.V4 as UUID
 import GHC.Generics (Generic)
-import Data.Time (UTCTime, getCurrentTime)
+import Data.Time (UTCTime)
 
 data TodoStatus = Pending | Completed
   deriving (Show, Eq, Generic)
@@ -41,9 +40,6 @@ instance FromJSON Todo
 emptyTodoMap :: Map UUID Todo
 emptyTodoMap = M.empty
 
-getTodo :: UUID -> Map UUID Todo -> Maybe Todo
-getTodo = M.lookup
-
 createTodo :: UTCTime -> T.Text -> Todo
 createTodo now title = Todo {
     title
@@ -54,6 +50,9 @@ createTodo now title = Todo {
 
 insertTodo :: UUID -> Todo -> Map UUID Todo -> Map UUID Todo
 insertTodo = M.insert 
+
+getTodo :: UUID -> Map UUID Todo -> Maybe Todo
+getTodo = M.lookup
 
 deleteTodo :: UUID -> Map UUID Todo -> Map UUID Todo
 deleteTodo = M.delete
