@@ -4,14 +4,15 @@
 -- |
 -- Module: Domain
 -- Pure domain logic for todos. No IO, no ID generation, no clock access -
--- callers inject 'UTCTime' and 'UUID' so this module stays deterministic
+-- callers inject 'UTCTime' and 'Int' so this module stays deterministic
 -- and trivially testable.
 module Domain
   ( Todo (..),
     TodoStatus (..),
+    Store,
     completeTodo,
     createTodo,
-    emptyTodoMap,
+    emptyStore,
     getTodo,
     insertTodo,
     deleteTodo,
@@ -19,11 +20,10 @@ module Domain
 where
 
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
+import Data.IntMap.Strict (IntMap)
+import qualified Data.IntMap.Strict as M
 import qualified Data.Text as T
 import Data.Time (UTCTime)
-import Data.UUID (UUID)
 import GHC.Generics (Generic)
 
 data TodoStatus = Pending | Completed
@@ -45,8 +45,23 @@ instance ToJSON Todo
 
 instance FromJSON Todo
 
-emptyTodoMap :: Map UUID Todo
-emptyTodoMap = M.empty
+type TodoMap = IntMap Todo
+
+data Store = Store
+  { todos :: TodoMap,
+    nextId :: Int -- Deriving ToJSON and FromJSON for `nextId` ensures we don't reuse 'deleted' IDs after serialisation
+  }
+  deriving (Show, Eq, Generic)
+
+instance ToJSON Store
+
+instance FromJSON Store
+
+emptyStore :: Store
+emptyStore = Store {todos = M.empty, nextId = 1}
+
+overTodos :: (TodoMap -> TodoMap) -> Store -> Store
+overTodos f s = s {todos = f (todos s)}
 
 -- Pass UTCTime created/updated at to keep function pure
 createTodo :: UTCTime -> T.Text -> Todo
@@ -58,16 +73,22 @@ createTodo now title =
       updatedAt = now
     }
 
--- The caller of `insertTodo` owns the UUID (used as the key in the Map) -
--- this keeps `insertTodo` pure.
-insertTodo :: UUID -> Todo -> Map UUID Todo -> Map UUID Todo
-insertTodo = M.insert
+insertTodo :: Todo -> Store -> (Int, Store)
+insertTodo todo s =
+  ( nextId s,
+    s
+      { todos = M.insert (nextId s) todo $ todos s,
+        nextId = nextId s + 1
+      }
+  )
 
-getTodo :: UUID -> Map UUID Todo -> Maybe Todo
-getTodo = M.lookup
+getTodo :: Int -> Store -> Maybe Todo
+getTodo todoId store = M.lookup todoId $ todos store
 
-deleteTodo :: UUID -> Map UUID Todo -> Map UUID Todo
-deleteTodo = M.delete
+deleteTodo :: Int -> Store -> Store
+deleteTodo todoId = overTodos $ M.delete todoId
 
-completeTodo :: UTCTime -> UUID -> Map UUID Todo -> Map UUID Todo
-completeTodo now = M.adjust (\t -> t {status = Completed, updatedAt = now})
+completeTodo :: UTCTime -> Int -> Store -> Store
+completeTodo now todoId = overTodos $ M.adjust markDone todoId
+  where
+    markDone t = t {status = Completed, updatedAt = now}
