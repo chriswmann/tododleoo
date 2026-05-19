@@ -1,0 +1,8 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "todo:lib"
+    - path: "./app"
+      component: "todo:exe:todo-exe"
+    - path: "./test"
+      component: "todo:test:todo-test"

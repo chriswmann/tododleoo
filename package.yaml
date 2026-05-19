@@ -1,6 +1,6 @@
 name: todo
 version: 0.1.0.0
-github: "chriswmann/todo"
+github: "chriswmann/tododleoo"
 license: BSD-3-Clause
 author: "Christopher Mann"
 maintainer: "8133496+chriswmann@users.noreply.github.com"
@@ -17,15 +17,15 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description: Please see the README on GitHub at <https://github.com/chriswmann/todo#readme>
+description: Please see the README on GitHub at <https://github.com/chriswmann/tododleoo#readme>
 
 dependencies:
   - base >= 4.7 && < 5
   - aeson
-  - text
   - containers
+  - directory
+  - text
   - time
-  - uuid
 
 ghc-options:
   - -Wall
