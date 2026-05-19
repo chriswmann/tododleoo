@@ -33,6 +33,22 @@ instance ToJSON TodoStatus
 
 instance FromJSON TodoStatus
 
+newtype TodoTitle = TodoTitle {unTodoTitle :: T.Text}
+
+data TitleError
+  = EmptyTitle
+  | TitleTooLong Int
+  deriving (Show, Eq)
+
+parseTodoTitle :: T.Text -> Either TitleError TodoTitle
+parseTodoTitle title
+  | T.null trimmedTitle = Left EmptyTitle
+  | lenTrimmedTitle > 256 = Left (TitleTooLong lenTrimmedTitle)
+  | otherwise = Right (TodoTitle trimmedTitle)
+  where
+    trimmedTitle = T.strip title
+    lenTrimmedTitle = T.length trimmedTitle
+
 data Todo = Todo
   { title :: T.Text,
     status :: TodoStatus,

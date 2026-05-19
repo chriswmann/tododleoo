@@ -1,4 +1,4 @@
-# Changelog for `todo`
+# Changelog for `tododleoo`
 
 All notable changes to this project will be documented in this file.
 
