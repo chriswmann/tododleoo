@@ -2,7 +2,7 @@ module Main (main) where
 
 import qualified Data.Text as T
 import Data.Time (getCurrentTime)
-import Domain (Store, completeTodo, createTodo, deleteTodo, emptyStore, getTodo, insertTodo)
+import Domain (Store, completeTodo, createTodo, deleteTodo, emptyStore, getTodo, insertTodo, parseTodoTitle)
 import System.Directory (doesFileExist)
 import Text.Read (readMaybe)
 
@@ -38,8 +38,14 @@ execute :: StoreCommand -> Store -> IO Store
 execute command store = case command of
   Create title -> do
     now <- getCurrentTime
-    let (_, updatedStore) = insertTodo (createTodo now (T.pack title)) store
-    pure updatedStore
+    case parseTodoTitle $ T.pack title of
+      Right todoTitle -> do
+        let todo = createTodo now todoTitle
+        let (_, updatedStore) = insertTodo todo store
+        pure updatedStore
+      Left err -> do
+        print err
+        pure store
   Complete lotId -> do
     now <- getCurrentTime
     let updatedStore = completeTodo now lotId store

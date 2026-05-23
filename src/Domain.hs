@@ -17,6 +17,7 @@ module Domain (
   getTodo,
   insertTodo,
   deleteTodo,
+  parseTodoTitle,
 )
 where
 
@@ -34,7 +35,10 @@ instance ToJSON TodoStatus
 
 instance FromJSON TodoStatus
 
-newtype TodoTitle = TodoTitle {unTodoTitle :: T.Text}
+newtype TodoTitle = TodoTitle {unTodoTitle :: T.Text} deriving (Show, Eq, Generic)
+
+instance ToJSON TodoTitle
+instance FromJSON TodoTitle
 
 data TitleError
   = EmptyTitle
@@ -51,7 +55,7 @@ parseTodoTitle title
   lenTrimmedTitle = T.length trimmedTitle
 
 data Todo = Todo
-  { title :: T.Text
+  { title :: TodoTitle
   , status :: TodoStatus
   , createdAt :: UTCTime
   , updatedAt :: UTCTime
@@ -81,7 +85,7 @@ overTodos :: (TodoMap -> TodoMap) -> Store -> Store
 overTodos f s = s{todos = f (todos s)}
 
 -- Pass UTCTime created/updated at to keep function pure
-createTodo :: UTCTime -> T.Text -> Todo
+createTodo :: UTCTime -> TodoTitle -> Todo
 createTodo now title =
   Todo
     { title
