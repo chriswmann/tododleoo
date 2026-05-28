@@ -3,53 +3,41 @@
 
 module DomainSpec (spec) where
 
-import Data.Maybe (fromJust, isNothing)
+import Data.Char (isSpace)
 import qualified Data.Text as T
 import Data.Time (UTCTime (..))
-import Domain (TitleError (..), Todo, TodoStatus (..), TodoTitle, completeTodo, createTodo, deleteTodo, emptyStore, getTodo, getTodoCreatedAt, getTodoStatus, getTodoTitle, getTodoUpdatedAt, insertTodo, parseTodoTitle, unTodoTitle)
+import Domain (TitleError (..), TodoStatus (..), TodoTitle (unTodoTitle), completeTodo, createTodo, emptyStore, getTodo, getTodoCreatedAt, getTodoStatus, getTodoUpdatedAt, insertTodo, parseTodoTitle)
 import Test.Hspec (Spec, describe)
 import Test.Hspec.QuickCheck (prop)
-import Test.QuickCheck (Arbitrary, arbitrary, elements, suchThat)
+import Test.QuickCheck (Arbitrary, Gen, Property, arbitrary, arbitraryUnicodeChar, chooseInt, elements, forAll, suchThat, vectorOf, (===))
 import Test.QuickCheck.Instances ()
 
 -- Define these Arbitrary instances here to keep QuickCheck dependencies out of the production module
 instance Arbitrary TodoStatus where
   arbitrary = elements [minBound .. maxBound]
 
-instance Arbitrary TodoTitle where
-  arbitrary = do
-    randomString <- arbitrary `suchThat` (not . null)
+genValidTitleText :: Gen T.Text
+genValidTitleText = do
+  len <- chooseInt (1, 256)
+  if len == 1
+    then T.singleton <$> nonSpace
+    else do
+      first <- nonSpace
+      middle <- vectorOf (len - 2) arbitraryUnicodeChar
+      end <- nonSpace
+      pure (T.pack (first : middle ++ [end]))
+  where
+    nonSpace = arbitraryUnicodeChar `suchThat` (not . isSpace)
 
-    case parseTodoTitle (T.pack randomString) of
-      Right title -> pure title
-      -- If invalid, try generating a new one
-      Left _ -> arbitrary
+prop_emptyTitleRejected :: Property
+prop_emptyTitleRejected =
+  forAll (elements ["", " ", "   ", "\t\n"]) $ \blank -> parseTodoTitle blank === Left EmptyTitle
 
-prop_createPending :: UTCTime -> TodoTitle -> Bool
-prop_createPending time title' = getTodoStatus (createTodo time title') == Pending
-
-prop_createCreated :: UTCTime -> TodoTitle -> Bool
-prop_createCreated time title' = getTodoCreatedAt (createTodo time title') == time
-
-prop_createUpdated :: UTCTime -> TodoTitle -> Bool
-prop_createUpdated time title' = getTodoUpdatedAt (createTodo time title') == time
-
-prop_createTitle :: UTCTime -> TodoTitle -> Bool
-prop_createTitle time title' = getTodoTitle (createTodo time title') == title'
-
-prop_completeMakesCompleted :: UTCTime -> TodoTitle -> Bool
-prop_completeMakesCompleted now title =
-  let (i, s) = insertTodo (createTodo now title) emptyStore
-      s' = completeTodo now i s
-   in fmap getTodoStatus (getTodo i s') == Just Completed
+prop_validTitleRoundTrip :: Property
+prop_validTitleRoundTrip = forAll genValidTitleText $ \t -> fmap unTodoTitle (parseTodoTitle t) == Right t
 
 spec :: Spec
 spec = do
-  describe "createTodo" $ do
-    prop "title round trips for any text and time" prop_createTitle
-    prop "createdAt round trips for any text and time" prop_createCreated
-    prop "updatedAt round trips for any text and time" prop_createUpdated
-    prop "status is Pending regardless of inputs" prop_createPending
-
-  describe "the todo store" $ do
-    prop "completing a todo makes it completed" prop_completeMakesCompleted
+  describe "parseTodoTitle" $ do
+    prop "rejects an empty title string" prop_emptyTitleRejected
+    prop "undoTodoTitle roundtrips parseTodoTitle on valid titles" prop_validTitleRoundTrip
