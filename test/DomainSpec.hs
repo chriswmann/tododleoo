@@ -34,7 +34,10 @@ prop_emptyTitleRejected =
   forAll (elements ["", " ", "   ", "\t\n"]) $ \blank -> parseTodoTitle blank === Left EmptyTitle
 
 prop_validTitleRoundTrip :: Property
-prop_validTitleRoundTrip = forAll genValidTitleText $ \t -> fmap unTodoTitle (parseTodoTitle t) == Right t
+prop_validTitleRoundTrip = forAll genValidTitleText $ \t -> fmap unTodoTitle (parseTodoTitle t) === Right t
+
+prop_completingTwiceIsIdempotent :: UTCTime -> Property
+prop_completingTwiceIsIdempotent now = createTodo now (parseTodoTitle)
 
 spec :: Spec
 spec = do

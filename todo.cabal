@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Domain
+      Domain.Internal
   other-modules:
       Paths_todo
   autogen-modules:
