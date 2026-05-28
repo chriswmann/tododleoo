@@ -122,7 +122,9 @@ deleteTodo todoId = overTodos $ M.delete todoId
 completeTodo :: UTCTime -> Int -> Store -> Store
 completeTodo now todoId = overTodos $ M.adjust markDone todoId
   where
-    markDone t = t {status = Completed, updatedAt = now}
+    markDone t = case status t of
+      Completed -> t
+      Pending -> t {status = Completed, updatedAt = now}
 
 getTodoStatus :: Todo -> TodoStatus
 getTodoStatus todo = status todo
