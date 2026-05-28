@@ -77,12 +77,23 @@ prop_completingTwiceIsIdempotent =
               .&&. getTodoUpdatedAt completed
                 === firstCompleteNow
 
+prop_freshTodoIsPendingAtNow :: Property
+prop_freshTodoIsPendingAtNow =
+  forAll genValidTitleAndTime $ \(title, now) ->
+    let todo = createTodo now title
+     in getTodoStatus todo === Pending
+          .&&. getTodoCreatedAt todo === now
+          .&&. getTodoUpdatedAt todo === now
+
 spec :: Spec
 spec = do
   describe "parseTodoTitle" $ do
     prop "rejects an empty title string" prop_emptyTitleRejected
     prop "rejects a title string that is too long" prop_rejectTitleTooLong
     prop "undoTodoTitle roundtrips parseTodoTitle on valid titles" prop_validTitleRoundTrip
+
+  describe "createTodo" $ do
+    prop "sets status to Pending and has the time of creation as the createdAt and updatedAt timestamps" prop_freshTodoIsPendingAtNow
 
   describe "completeTodo" $ do
     prop "completeTodo is idempotent" prop_completingTwiceIsIdempotent
