@@ -25,18 +25,35 @@ genValidTitleText = do
   where
     nonSpace = arbitraryUnicodeChar `suchThat` (not . isSpace)
 
-genValidTodotitle :: Gen TodoTitle
-genValidTodotitle = TodoTitle <$> genValidTitleText
+genTooLongTitleText :: Gen T.Text
+genTooLongTitleText = do
+  len <- chooseInt (257, 4096)
+  first <- nonSpace
+  middle <- vectorOf (len - 2) arbitraryUnicodeChar
+  end <- nonSpace
+  pure (T.pack (first : middle ++ [end]))
+  where
+    nonSpace = arbitraryUnicodeChar `suchThat` (not . isSpace)
+
+genTooLongTodoTitle :: Gen TodoTitle
+genTooLongTodoTitle = TodoTitle <$> genTooLongTitleText
+
+genValidTodoTitle :: Gen TodoTitle
+genValidTodoTitle = TodoTitle <$> genValidTitleText
 
 genValidTitleAndTime :: Gen (TodoTitle, UTCTime)
 genValidTitleAndTime = do
-  title <- genValidTodotitle
+  title <- genValidTodoTitle
   now <- arbitrary
   pure (title, now)
 
 prop_emptyTitleRejected :: Property
 prop_emptyTitleRejected =
   forAll (elements ["", " ", "   ", "\t\n"]) $ \blank -> parseTodoTitle blank === Left EmptyTitle
+
+prop_rejectTitleTooLong :: Property
+prop_rejectTitleTooLong =
+  forAll genTooLongTitleText $ \t -> (parseTodoTitle t) === Left (TitleTooLong (T.length t))
 
 prop_validTitleRoundTrip :: Property
 prop_validTitleRoundTrip = forAll genValidTitleText $ \t -> fmap unTodoTitle (parseTodoTitle t) === Right t
@@ -64,6 +81,7 @@ spec :: Spec
 spec = do
   describe "parseTodoTitle" $ do
     prop "rejects an empty title string" prop_emptyTitleRejected
+    prop "rejects a title string that is too long" prop_rejectTitleTooLong
     prop "undoTodoTitle roundtrips parseTodoTitle on valid titles" prop_validTitleRoundTrip
 
   describe "completeTodo" $ do
