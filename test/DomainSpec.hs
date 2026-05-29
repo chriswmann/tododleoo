@@ -10,7 +10,7 @@ import Domain (Store, TitleError (..), Todo, TodoStatus (..), completeTodo, crea
 import Domain.Internal (TodoTitle (..))
 import Test.Hspec (Spec, describe)
 import Test.Hspec.QuickCheck (prop)
-import Test.QuickCheck (Gen, Property, arbitrary, arbitraryUnicodeChar, chooseInt, counterexample, elements, forAll, forAllShrink, listOf, property, suchThat, vectorOf, (.&&.), (===))
+import Test.QuickCheck (Gen, Property, arbitrary, arbitraryUnicodeChar, chooseInt, counterexample, elements, forAll, forAllShrink, listOf, oneof, property, suchThat, vectorOf, (.&&.), (===))
 import Test.QuickCheck.Instances ()
 
 genValidTitleText :: Gen T.Text
@@ -58,6 +58,27 @@ genValidTodo = uncurry (flip createTodo) <$> genValidTitleAndTime
 genValidTodos :: Gen [Todo]
 genValidTodos = listOf genValidTodo
 
+genOneOrMoreWhiteSpaceTextChars :: Gen T.Text
+genOneOrMoreWhiteSpaceTextChars = do
+  len <- chooseInt (1, 64)
+  string <- vectorOf len (elements " \t\n\r\f\v")
+  pure (T.pack string)
+
+genZeroOrMoreWhiteSpaceTextChars :: Gen T.Text
+genZeroOrMoreWhiteSpaceTextChars = do
+  string <- listOf $ elements " \t\n\r\f\v"
+  pure (T.pack string)
+
+genTitleTextWithLeadingOrTrailingWhitespace :: Gen (T.Text, T.Text)
+genTitleTextWithLeadingOrTrailingWhitespace = do
+  (start, end) <-
+    oneof
+      [ (,) <$> genOneOrMoreWhiteSpaceTextChars <*> genZeroOrMoreWhiteSpaceTextChars,
+        (,) <$> genZeroOrMoreWhiteSpaceTextChars <*> genOneOrMoreWhiteSpaceTextChars
+      ]
+  middle <- genValidTitleText
+  pure ((start <> middle <> end), middle)
+
 prop_emptyTitleRejected :: Property
 prop_emptyTitleRejected =
   forAll (elements ["", " ", "   ", "\t\n"]) $ \blank -> parseTodoTitle blank === Left EmptyTitle
@@ -68,6 +89,10 @@ prop_rejectTitleTooLong =
 
 prop_validTitleRoundTrip :: Property
 prop_validTitleRoundTrip = forAll genValidTitleText $ \t -> fmap unTodoTitle (parseTodoTitle t) === Right t
+
+prop_parseTodoTitleTrimsWhitespaces :: Property
+prop_parseTodoTitleTrimsWhitespaces = forAll genTitleTextWithLeadingOrTrailingWhitespace $ \(t, m) ->
+  (fmap unTodoTitle (parseTodoTitle t)) === Right m
 
 prop_completingTwiceIsIdempotent :: Property
 prop_completingTwiceIsIdempotent =
@@ -113,9 +138,24 @@ prop_insertAfterDeleteDoesNotReuseId =
         s3 = deleteTodo id1 s2
         (id3, s4) = insertTodo t3 s3
      in id3 === 3 .&&. case getTodo id2 s4 of
-          Nothing -> error "Undeleted ID missing from store"
+          Nothing -> counterexample "Undeleted ID missing from store" (property False)
           Just todo ->
             todo === t2
+
+prop_deleteTodoDeletesExpectedTodo :: Property
+prop_deleteTodoDeletesExpectedTodo =
+  forAll ((,) <$> genValidTodo <*> genValidTodo) $ \(t1, t2) ->
+    let (id1, s1) = insertTodo t1 emptyStore
+        (id2, s2) = insertTodo t2 s1
+        s3 = deleteTodo id1 s2
+     in ( case getTodo id1 s3 of
+            Nothing -> property (True)
+            Just _ -> counterexample "deleted todo then retrieved via getTodo" (property False)
+        )
+          .&&. ( case getTodo id2 s3 of
+                   Nothing -> counterexample "not-deleted todo could not be retrieved from store" (property False)
+                   Just todo -> todo === t2
+               )
 
 spec :: Spec
 spec = do
@@ -123,6 +163,7 @@ spec = do
     prop "rejects an empty title string" prop_emptyTitleRejected
     prop "rejects a title string that is too long" prop_rejectTitleTooLong
     prop "undoTodoTitle roundtrips parseTodoTitle on valid titles" prop_validTitleRoundTrip
+    prop "trims leading and trailing whitespace" prop_parseTodoTitleTrimsWhitespaces
 
   describe "createTodo" $ do
     prop "sets status to Pending and has the time of creation as the createdAt and updatedAt timestamps" prop_freshTodoIsPendingAtNow
@@ -133,3 +174,6 @@ spec = do
 
   describe "completeTodo" $ do
     prop "completeTodo is idempotent" prop_completingTwiceIsIdempotent
+
+  describe "deleteTodo" $ do
+    prop "deleteTodo deletes specified todo only" prop_deleteTodoDeletesExpectedTodo
