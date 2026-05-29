@@ -137,10 +137,7 @@ prop_insertAfterDeleteDoesNotReuseId =
         (id2, s2) = insertTodo t2 s1
         s3 = deleteTodo id1 s2
         (id3, s4) = insertTodo t3 s3
-     in id3 === 3 .&&. case getTodo id2 s4 of
-          Nothing -> counterexample "Undeleted ID missing from store" (property False)
-          Just todo ->
-            todo === t2
+     in id3 === 3 .&&. getTodo id2 s4 === Just t2
 
 prop_deleteTodoDeletesExpectedTodo :: Property
 prop_deleteTodoDeletesExpectedTodo =
@@ -148,14 +145,10 @@ prop_deleteTodoDeletesExpectedTodo =
     let (id1, s1) = insertTodo t1 emptyStore
         (id2, s2) = insertTodo t2 s1
         s3 = deleteTodo id1 s2
-     in ( case getTodo id1 s3 of
-            Nothing -> property (True)
-            Just _ -> counterexample "deleted todo then retrieved via getTodo" (property False)
-        )
-          .&&. ( case getTodo id2 s3 of
-                   Nothing -> counterexample "not-deleted todo could not be retrieved from store" (property False)
-                   Just todo -> todo === t2
-               )
+     in getTodo id1 s3 === Nothing .&&. getTodo id2 s3 === Just t2
+
+prop_deleteAbsentTodoIsNoOp :: Property
+prop_deleteAbsentTodoIsNoOp = deleteTodo 1 emptyStore === emptyStore
 
 spec :: Spec
 spec = do
@@ -177,3 +170,4 @@ spec = do
 
   describe "deleteTodo" $ do
     prop "deleteTodo deletes specified todo only" prop_deleteTodoDeletesExpectedTodo
+    prop "is a no-op on an absent todo" prop_deleteAbsentTodoIsNoOp
