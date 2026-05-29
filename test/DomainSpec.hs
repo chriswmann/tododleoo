@@ -6,7 +6,7 @@ import Data.Char (isSpace)
 import Data.List (mapAccumL)
 import qualified Data.Text as T
 import Data.Time (UTCTime (..), addUTCTime)
-import Domain (Store, TitleError (..), Todo, TodoStatus (..), completeTodo, createTodo, emptyStore, getTodo, getTodoCreatedAt, getTodoStatus, getTodoUpdatedAt, insertTodo, parseTodoTitle)
+import Domain (Store, TitleError (..), Todo, TodoStatus (..), completeTodo, createTodo, deleteTodo, emptyStore, getTodo, getTodoCreatedAt, getTodoStatus, getTodoUpdatedAt, insertTodo, parseTodoTitle)
 import Domain.Internal (TodoTitle (..))
 import Test.Hspec (Spec, describe)
 import Test.Hspec.QuickCheck (prop)
@@ -105,6 +105,18 @@ prop_insertAssignsSequentialIDsFromEmpty =
          in ids === [1 .. length todos]
     )
 
+prop_insertAfterDeleteDoesNotReuseId :: Property
+prop_insertAfterDeleteDoesNotReuseId =
+  forAll ((,,) <$> genValidTodo <*> genValidTodo <*> genValidTodo) $ \(t1, t2, t3) ->
+    let (id1, s1) = insertTodo t1 emptyStore
+        (id2, s2) = insertTodo t2 s1
+        s3 = deleteTodo id1 s2
+        (id3, s4) = insertTodo t3 s3
+     in id3 === 3 .&&. case getTodo id2 s4 of
+          Nothing -> error "Undeleted ID missing from store"
+          Just todo ->
+            todo === t2
+
 spec :: Spec
 spec = do
   describe "parseTodoTitle" $ do
@@ -117,6 +129,7 @@ spec = do
 
   describe "insertTodo" $ do
     prop "assigns sequential IDs from an empty store" prop_insertAssignsSequentialIDsFromEmpty
+    prop "does not reuse deleted IDs" prop_insertAfterDeleteDoesNotReuseId
 
   describe "completeTodo" $ do
     prop "completeTodo is idempotent" prop_completingTwiceIsIdempotent
