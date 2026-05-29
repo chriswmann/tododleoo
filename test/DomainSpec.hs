@@ -3,13 +3,14 @@
 module DomainSpec (spec) where
 
 import Data.Char (isSpace)
+import Data.List (mapAccumL)
 import qualified Data.Text as T
 import Data.Time (UTCTime (..), addUTCTime)
-import Domain (TitleError (..), TodoStatus (..), completeTodo, createTodo, emptyStore, getTodo, getTodoCreatedAt, getTodoStatus, getTodoUpdatedAt, insertTodo, parseTodoTitle)
+import Domain (Store, TitleError (..), Todo, TodoStatus (..), completeTodo, createTodo, emptyStore, getTodo, getTodoCreatedAt, getTodoStatus, getTodoUpdatedAt, insertTodo, parseTodoTitle)
 import Domain.Internal (TodoTitle (..))
 import Test.Hspec (Spec, describe)
 import Test.Hspec.QuickCheck (prop)
-import Test.QuickCheck (Gen, Property, arbitrary, arbitraryUnicodeChar, chooseInt, counterexample, elements, forAll, forAllShrink, property, suchThat, vectorOf, (.&&.), (===))
+import Test.QuickCheck (Gen, Property, arbitrary, arbitraryUnicodeChar, chooseInt, counterexample, elements, forAll, forAllShrink, listOf, property, suchThat, vectorOf, (.&&.), (===))
 import Test.QuickCheck.Instances ()
 
 genValidTitleText :: Gen T.Text
@@ -46,6 +47,16 @@ genValidTitleAndTime = do
   title <- genValidTodoTitle
   now <- arbitrary
   pure (title, now)
+
+insertMany :: [Todo] -> Store -> (Store, [Int])
+insertMany todos store =
+  mapAccumL (\s t -> let (i, s') = insertTodo t s in (s', i)) store todos
+
+genValidTodo :: Gen Todo
+genValidTodo = uncurry (flip createTodo) <$> genValidTitleAndTime
+
+genValidTodos :: Gen [Todo]
+genValidTodos = listOf genValidTodo
 
 prop_emptyTitleRejected :: Property
 prop_emptyTitleRejected =
@@ -85,6 +96,15 @@ prop_freshTodoIsPendingAtNow =
           .&&. getTodoCreatedAt todo === now
           .&&. getTodoUpdatedAt todo === now
 
+prop_insertAssignsSequentialIDsFromEmpty :: Property
+prop_insertAssignsSequentialIDsFromEmpty =
+  forAll
+    genValidTodos
+    ( \todos ->
+        let (_finalStore, ids) = insertMany todos emptyStore
+         in ids === [1 .. length todos]
+    )
+
 spec :: Spec
 spec = do
   describe "parseTodoTitle" $ do
@@ -94,6 +114,9 @@ spec = do
 
   describe "createTodo" $ do
     prop "sets status to Pending and has the time of creation as the createdAt and updatedAt timestamps" prop_freshTodoIsPendingAtNow
+
+  describe "insertTodo" $ do
+    prop "assigns sequential IDs from an empty store" prop_insertAssignsSequentialIDsFromEmpty
 
   describe "completeTodo" $ do
     prop "completeTodo is idempotent" prop_completingTwiceIsIdempotent
