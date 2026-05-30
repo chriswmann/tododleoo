@@ -2,6 +2,7 @@ module Main (main) where
 
 import Control.Monad (when)
 import Data.Char (toLower)
+import Data.List (find)
 import qualified Data.Text as T
 import Data.Time (getCurrentTime)
 import Domain (Store, completeTodo, createTodo, deleteTodo, emptyStore, getTodo, insertTodo, parseTodoTitle)
@@ -26,17 +27,91 @@ data MetaCommand
 data Command = Store StoreCommand | Meta MetaCommand
   deriving (Show)
 
+data CommandSpec = CommandSpec
+  { keyword :: String,
+    parse :: [String] -> Maybe Command
+  }
+
+addSpec :: CommandSpec
+addSpec =
+  CommandSpec
+    { keyword = "add",
+      parse = \args -> Just (Store (Create (unwords args)))
+    }
+
+doneSpec :: CommandSpec
+doneSpec =
+  CommandSpec
+    { keyword = "done",
+      parse = \args -> case args of
+        [idStr] -> Store . Complete <$> readMaybe idStr
+        _ -> Nothing
+    }
+
+removeSpec :: CommandSpec
+removeSpec =
+  CommandSpec
+    { keyword = "remove",
+      parse = \args -> case args of
+        [idStr] -> Store . Delete <$> readMaybe idStr
+        _ -> Nothing
+    }
+
+viewSpec :: CommandSpec
+viewSpec =
+  CommandSpec
+    { keyword = "view",
+      parse = \args -> case args of
+        [idStr] -> Store . View <$> readMaybe idStr
+        _ -> Nothing
+    }
+
+listSpec :: CommandSpec
+listSpec =
+  CommandSpec
+    { keyword = "list",
+      parse = \_ -> Just (Store List)
+    }
+
+helpSpec :: CommandSpec
+helpSpec =
+  CommandSpec
+    { keyword = "help",
+      parse = \_ -> Just (Meta Help)
+    }
+
+exitSpec :: CommandSpec
+exitSpec =
+  CommandSpec
+    { keyword = "exit",
+      parse = \_ -> Just (Meta Quit)
+    }
+
+quitSpec :: CommandSpec
+quitSpec =
+  CommandSpec
+    { keyword = "quit",
+      parse = \_ -> Just (Meta Quit)
+    }
+
+commands :: [CommandSpec]
+commands =
+  [ addSpec,
+    doneSpec,
+    removeSpec,
+    viewSpec,
+    listSpec,
+    helpSpec,
+    exitSpec,
+    quitSpec
+  ]
+
 parseCommand :: String -> Maybe Command
 parseCommand input = case words input of
-  ("add" : rest) -> Just (Store (Create (unwords rest)))
-  ["done", idStr] -> Store . Complete <$> readMaybe idStr
-  ["remove", idStr] -> Store . Delete <$> readMaybe idStr
-  ["view", idStr] -> Store . View <$> readMaybe idStr
-  ["list"] -> Just (Store List)
-  ["help"] -> Just (Meta Help)
-  ["exit"] -> Just (Meta Quit)
-  ["quit"] -> Just (Meta Quit)
-  _ -> Nothing
+  [] -> Nothing
+  (verb : args) ->
+    find (\spec -> keyword spec == verb) commands
+      >>= \s -> parse s args
 
 execute :: StoreCommand -> Store -> IO Store
 execute command store = case command of
