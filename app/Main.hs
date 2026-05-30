@@ -50,18 +50,18 @@ execute command store = case command of
       Left err -> do
         print err
         pure store
-  Complete lotId -> do
+  Complete todoId -> do
     now <- getCurrentTime
-    let updatedStore = completeTodo now lotId store
-    print (getTodo lotId updatedStore)
+    let updatedStore = completeTodo now todoId store
+    print (getTodo todoId updatedStore)
     pure updatedStore
-  Delete lotId -> do
-    let updatedStore = deleteTodo lotId store
-    let msg = "Lot " ++ show lotId ++ " deleted."
+  Delete todoId -> do
+    let updatedStore = deleteTodo todoId store
+    let msg = "Todo " ++ show todoId ++ " deleted."
     putStrLn msg
     pure updatedStore
-  View lotId -> do
-    print (getTodo lotId store)
+  View todoId -> do
+    print (getTodo todoId store)
     pure store
   List -> do
     print store

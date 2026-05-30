@@ -1,6 +1,12 @@
-module Persistence where
+module Persistence
+  ( LoadError (..),
+    defaultStorePath,
+    loadStore,
+    saveStore,
+  )
+where
 
-import Data.Aeson (eitherDecode, eitherDecodeFileStrict, eitherDecodeFileStrict', encode)
+import Data.Aeson (eitherDecodeFileStrict')
 import Data.Aeson.Encode.Pretty (encodePretty)
 import qualified Data.ByteString.Lazy as BL
 import Domain (Store)
