@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      DamerauLevenshtein
       Domain
       Domain.Internal
       Persistence
@@ -38,6 +39,7 @@ library
   build-depends:
       aeson
     , aeson-pretty
+    , array
     , base >=4.7 && <5
     , bytestring
     , containers
@@ -59,6 +61,7 @@ executable todo-exe
   build-depends:
       aeson
     , aeson-pretty
+    , array
     , base >=4.7 && <5
     , bytestring
     , containers
@@ -86,6 +89,7 @@ test-suite todo-test
       QuickCheck
     , aeson
     , aeson-pretty
+    , array
     , base >=4.7 && <5
     , bytestring
     , containers
