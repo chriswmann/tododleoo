@@ -76,6 +76,7 @@ test-suite todo-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      DamerauLevenshteinSpec
       DomainSpec
       Paths_todo
   autogen-modules:
