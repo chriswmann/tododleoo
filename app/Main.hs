@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Main (main) where
 
 import Control.Monad (when)
@@ -36,14 +38,14 @@ addSpec :: CommandSpec
 addSpec =
   CommandSpec
     { keyword = "add",
-      parse = \args -> Just (Store (Create (unwords args)))
+      parse = Just . Store . Create . unwords
     }
 
 doneSpec :: CommandSpec
 doneSpec =
   CommandSpec
     { keyword = "done",
-      parse = \args -> case args of
+      parse = \case
         [idStr] -> Store . Complete <$> readMaybe idStr
         _ -> Nothing
     }
@@ -52,7 +54,7 @@ removeSpec :: CommandSpec
 removeSpec =
   CommandSpec
     { keyword = "remove",
-      parse = \args -> case args of
+      parse = \case
         [idStr] -> Store . Delete <$> readMaybe idStr
         _ -> Nothing
     }
@@ -61,7 +63,7 @@ viewSpec :: CommandSpec
 viewSpec =
   CommandSpec
     { keyword = "view",
-      parse = \args -> case args of
+      parse = \case
         [idStr] -> Store . View <$> readMaybe idStr
         _ -> Nothing
     }
