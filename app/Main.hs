@@ -47,10 +47,10 @@ loop path store = do
   printMenu
   input <- getLine
   case parseCommand input of
-    Nothing -> do putStrLn "Unknown command"; loop path store
-    Just (Meta Help) -> do printMenu; loop path store
-    Just (Meta Quit) -> putStrLn "Bye!"
-    Just (Store command) -> do
+    Left err -> do putStrLn (show err); loop path store
+    Right (Meta Help) -> do printMenu; loop path store
+    Right (Meta Quit) -> putStrLn "Bye!"
+    Right (Store command) -> do
       updatedStore <- execute command store
       when (updatedStore /= store) (saveStore path updatedStore)
       loop path updatedStore
