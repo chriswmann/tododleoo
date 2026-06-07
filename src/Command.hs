@@ -2,6 +2,7 @@
 
 module Command
   ( Command (..),
+    CommandError (..),
     CommandSpec,
     MetaCommand (..),
     StoreCommand (..),
@@ -20,15 +21,15 @@ data StoreCommand
   | Delete Int
   | View Int
   | List
-  deriving (Show)
+  deriving (Show, Eq)
 
 data MetaCommand
   = Help
   | Quit
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Command = Store StoreCommand | Meta MetaCommand
-  deriving (Show)
+  deriving (Show, Eq)
 
 data CommandSpec = CommandSpec
   { keyword :: String,
@@ -36,7 +37,7 @@ data CommandSpec = CommandSpec
   }
 
 data CommandError = UnknownVerb String (Maybe String) | BadArguments [String] | NoCommand
-  deriving (Show)
+  deriving (Show, Eq)
 
 addSpec :: CommandSpec
 addSpec =
