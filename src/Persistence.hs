@@ -13,7 +13,7 @@ import Domain (Store)
 import System.Directory (XdgDirectory (XdgData), createDirectoryIfMissing, getXdgDirectory, renameFile)
 import System.FilePath (takeDirectory, (</>))
 
-data LoadError = FileCorruptedError String
+newtype LoadError = FileCorruptedError String
   deriving (Show, Eq)
 
 defaultStorePath :: IO FilePath
