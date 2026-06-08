@@ -5,7 +5,7 @@ import Control.Monad (when)
 import Data.Char (toLower)
 import qualified Data.Text as T
 import Data.Time (getCurrentTime)
-import Domain (Store, completeTodo, createTodo, deleteTodo, emptyStore, getTodo, insertTodo, parseTodoTitle)
+import Domain (Store, TodoId, completeTodo, createTodo, deleteTodo, displayTodoId, emptyStore, getTodo, insertTodo, parseTodoTitle)
 import Persistence (defaultStorePath, loadStore, saveStore)
 import System.Directory (doesFileExist)
 import System.Exit (exitFailure, exitSuccess)
@@ -29,7 +29,7 @@ execute command store = case command of
     pure updatedStore
   Delete todoId -> do
     let updatedStore = deleteTodo todoId store
-    let msg = "Todo " ++ show todoId ++ " deleted."
+    let msg = "Todo " ++ displayTodoId todoId ++ " deleted."
     putStrLn msg
     pure updatedStore
   View todoId -> do
@@ -47,7 +47,7 @@ loop path store = do
   printMenu
   input <- getLine
   case parseCommand input of
-    Left err -> do putStrLn (show err); loop path store
+    Left err -> do print err; loop path store
     Right (Meta Help) -> do printMenu; loop path store
     Right (Meta Quit) -> putStrLn "Bye!"
     Right (Store command) -> do

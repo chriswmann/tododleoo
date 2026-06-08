@@ -7,7 +7,7 @@ import Data.List (mapAccumL)
 import qualified Data.Text as T
 import Data.Time (UTCTime (..), addUTCTime)
 import Domain (Store, TitleError (..), Todo, TodoStatus (..), completeTodo, createTodo, deleteTodo, emptyStore, getTodo, getTodoCreatedAt, getTodoStatus, getTodoUpdatedAt, insertTodo, parseTodoTitle)
-import Domain.Internal (TodoTitle (..))
+import Domain.Internal (TodoId (..), TodoTitle (..))
 import Test.Hspec (Spec, describe)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Gen, Property, arbitrary, arbitraryUnicodeChar, chooseInt, counterexample, elements, forAll, forAllShrink, listOf, oneof, property, suchThat, vectorOf, (.&&.), (===))
@@ -23,8 +23,8 @@ genValidTitleText = do
       middle <- vectorOf (len - 2) arbitraryUnicodeChar
       end <- nonSpace
       pure (T.pack (first : middle ++ [end]))
-  where
-    nonSpace = arbitraryUnicodeChar `suchThat` (not . isSpace)
+ where
+  nonSpace = arbitraryUnicodeChar `suchThat` (not . isSpace)
 
 genTooLongTitleText :: Gen T.Text
 genTooLongTitleText = do
@@ -33,8 +33,8 @@ genTooLongTitleText = do
   middle <- vectorOf (len - 2) arbitraryUnicodeChar
   end <- nonSpace
   pure (T.pack (first : middle ++ [end]))
-  where
-    nonSpace = arbitraryUnicodeChar `suchThat` (not . isSpace)
+ where
+  nonSpace = arbitraryUnicodeChar `suchThat` (not . isSpace)
 
 shrinkTooLongText :: T.Text -> [T.Text]
 shrinkTooLongText text = [candidate | n <- [257 .. T.length text - 1], let candidate = T.take n text, not $ (isSpace . T.last) candidate]
@@ -48,7 +48,7 @@ genValidTitleAndTime = do
   now <- arbitrary
   pure (title, now)
 
-insertMany :: [Todo] -> Store -> (Store, [Int])
+insertMany :: [Todo] -> Store -> (Store, [TodoId])
 insertMany todos store =
   mapAccumL (\s t -> let (i, s') = insertTodo t s in (s', i)) store todos
 
@@ -73,8 +73,8 @@ genTitleTextWithLeadingOrTrailingWhitespace :: Gen (T.Text, T.Text)
 genTitleTextWithLeadingOrTrailingWhitespace = do
   (start, end) <-
     oneof
-      [ (,) <$> genOneOrMoreWhiteSpaceTextChars <*> genZeroOrMoreWhiteSpaceTextChars,
-        (,) <$> genZeroOrMoreWhiteSpaceTextChars <*> genOneOrMoreWhiteSpaceTextChars
+      [ (,) <$> genOneOrMoreWhiteSpaceTextChars <*> genZeroOrMoreWhiteSpaceTextChars
+      , (,) <$> genZeroOrMoreWhiteSpaceTextChars <*> genOneOrMoreWhiteSpaceTextChars
       ]
   middle <- genValidTitleText
   pure ((start <> middle <> end), middle)
@@ -109,17 +109,20 @@ prop_completingTwiceIsIdempotent =
             getTodoStatus completed
               === Completed
               .&&. getTodoCreatedAt completed
-                === now
+              === now
               .&&. getTodoUpdatedAt completed
-                === firstCompleteNow
+              === firstCompleteNow
 
 prop_freshTodoIsPendingAtNow :: Property
 prop_freshTodoIsPendingAtNow =
   forAll genValidTitleAndTime $ \(title, now) ->
     let todo = createTodo now title
-     in getTodoStatus todo === Pending
-          .&&. getTodoCreatedAt todo === now
-          .&&. getTodoUpdatedAt todo === now
+     in getTodoStatus todo
+          === Pending
+          .&&. getTodoCreatedAt todo
+          === now
+          .&&. getTodoUpdatedAt todo
+          === now
 
 prop_insertAssignsSequentialIDsFromEmpty :: Property
 prop_insertAssignsSequentialIDsFromEmpty =
@@ -127,7 +130,7 @@ prop_insertAssignsSequentialIDsFromEmpty =
     genValidTodos
     ( \todos ->
         let (_finalStore, ids) = insertMany todos emptyStore
-         in ids === [1 .. length todos]
+         in ids === map (TodoId . fromIntegral) [1 .. length todos]
     )
 
 prop_insertAfterDeleteDoesNotReuseId :: Property
@@ -137,7 +140,7 @@ prop_insertAfterDeleteDoesNotReuseId =
         (id2, s2) = insertTodo t2 s1
         s3 = deleteTodo id1 s2
         (id3, s4) = insertTodo t3 s3
-     in id3 === 3 .&&. getTodo id2 s4 === Just t2
+     in id3 === TodoId 3 .&&. getTodo id2 s4 === Just t2
 
 prop_deleteTodoDeletesExpectedTodo :: Property
 prop_deleteTodoDeletesExpectedTodo =
@@ -148,7 +151,7 @@ prop_deleteTodoDeletesExpectedTodo =
      in getTodo id1 s3 === Nothing .&&. getTodo id2 s3 === Just t2
 
 prop_deleteAbsentTodoIsNoOp :: Property
-prop_deleteAbsentTodoIsNoOp = deleteTodo 1 emptyStore === emptyStore
+prop_deleteAbsentTodoIsNoOp = deleteTodo (TodoId 1) emptyStore === emptyStore
 
 spec :: Spec
 spec = do

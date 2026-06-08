@@ -1,25 +1,25 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Command
-  ( Command (..),
-    CommandError (..),
-    CommandSpec,
-    MetaCommand (..),
-    StoreCommand (..),
-    parseCommand,
-  )
+module Command (
+  Command (..),
+  CommandError (..),
+  CommandSpec,
+  MetaCommand (..),
+  StoreCommand (..),
+  parseCommand,
+)
 where
 
 import DamerauLevenshtein (levenshtein)
 import Data.List (find, minimumBy)
 import Data.Ord (comparing)
-import Text.Read (readMaybe)
+import Domain (TodoId, parseTodoId)
 
 data StoreCommand
   = Create String
-  | Complete Int
-  | Delete Int
-  | View Int
+  | Complete TodoId
+  | Delete TodoId
+  | View TodoId
   | List
   deriving (Show, Eq)
 
@@ -32,8 +32,8 @@ data Command = Store StoreCommand | Meta MetaCommand
   deriving (Show, Eq)
 
 data CommandSpec = CommandSpec
-  { keyword :: String,
-    parse :: [String] -> Maybe Command
+  { keyword :: String
+  , parse :: [String] -> Maybe Command
   }
 
 data CommandError = UnknownVerb String (Maybe String) | BadArguments [String] | NoCommand
@@ -42,75 +42,75 @@ data CommandError = UnknownVerb String (Maybe String) | BadArguments [String] | 
 addSpec :: CommandSpec
 addSpec =
   CommandSpec
-    { keyword = "add",
-      parse = Just . Store . Create . unwords
+    { keyword = "add"
+    , parse = Just . Store . Create . unwords
     }
 
 doneSpec :: CommandSpec
 doneSpec =
   CommandSpec
-    { keyword = "done",
-      parse = \case
-        [idStr] -> Store . Complete <$> readMaybe idStr
+    { keyword = "done"
+    , parse = \case
+        [idStr] -> Store . Complete <$> parseTodoId idStr
         _ -> Nothing
     }
 
 removeSpec :: CommandSpec
 removeSpec =
   CommandSpec
-    { keyword = "remove",
-      parse = \case
-        [idStr] -> Store . Delete <$> readMaybe idStr
+    { keyword = "remove"
+    , parse = \case
+        [idStr] -> Store . Delete <$> parseTodoId idStr
         _ -> Nothing
     }
 
 viewSpec :: CommandSpec
 viewSpec =
   CommandSpec
-    { keyword = "view",
-      parse = \case
-        [idStr] -> Store . View <$> readMaybe idStr
+    { keyword = "view"
+    , parse = \case
+        [idStr] -> Store . View <$> parseTodoId idStr
         _ -> Nothing
     }
 
 listSpec :: CommandSpec
 listSpec =
   CommandSpec
-    { keyword = "list",
-      parse = \_ -> Just (Store List)
+    { keyword = "list"
+    , parse = \_ -> Just (Store List)
     }
 
 helpSpec :: CommandSpec
 helpSpec =
   CommandSpec
-    { keyword = "help",
-      parse = \_ -> Just (Meta Help)
+    { keyword = "help"
+    , parse = \_ -> Just (Meta Help)
     }
 
 exitSpec :: CommandSpec
 exitSpec =
   CommandSpec
-    { keyword = "exit",
-      parse = \_ -> Just (Meta Quit)
+    { keyword = "exit"
+    , parse = \_ -> Just (Meta Quit)
     }
 
 quitSpec :: CommandSpec
 quitSpec =
   CommandSpec
-    { keyword = "quit",
-      parse = \_ -> Just (Meta Quit)
+    { keyword = "quit"
+    , parse = \_ -> Just (Meta Quit)
     }
 
 commands :: [CommandSpec]
 commands =
-  [ addSpec,
-    doneSpec,
-    removeSpec,
-    viewSpec,
-    listSpec,
-    helpSpec,
-    exitSpec,
-    quitSpec
+  [ addSpec
+  , doneSpec
+  , removeSpec
+  , viewSpec
+  , listSpec
+  , helpSpec
+  , exitSpec
+  , quitSpec
   ]
 
 parseCommand :: String -> Either CommandError Command
@@ -127,7 +127,7 @@ suggest :: String -> Maybe String
 suggest verb
   | bestDistance <= threshold = Just best
   | otherwise = Nothing
-  where
-    scored = [(kws, levenshtein verb kws) | spec <- commands, let kws = keyword spec]
-    (best, bestDistance) = minimumBy (comparing snd) scored
-    threshold = 2
+ where
+  scored = [(kws, levenshtein verb kws) | spec <- commands, let kws = keyword spec]
+  (best, bestDistance) = minimumBy (comparing snd) scored
+  threshold = 2
